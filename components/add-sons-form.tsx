@@ -6,15 +6,15 @@ import { Button } from '@/components/ui/button'
 
 
 interface AddSonsFormProps {
-  
+
   onClose: () => void
 }
 
-export function AddSonsForm({  onClose }: AddSonsFormProps) {
+export function AddSonsForm({ onClose }: AddSonsFormProps) {
   const [requesterName, setRequesterName] = useState('')
- 
+
   const [sons, setSons] = useState<string[]>([''])
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
@@ -38,16 +38,16 @@ export function AddSonsForm({  onClose }: AddSonsFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    
+
     // تصفية الأسماء الفارغة
     const validSons = sons.filter(name => name.trim() !== '')
-    
+
     // التحقق من الحقول المطلوبة
     if (!requesterName.trim()) {
       setError('الرجاء إدخال اسم مقدم الطلب')
       return
     }
-    
+
     if (validSons.length === 0) {
       setError('الرجاء إدخال اسم ابن واحد على الأقل')
       return
@@ -59,19 +59,19 @@ export function AddSonsForm({  onClose }: AddSonsFormProps) {
       const response = await fetch('/api/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          requester_name: requesterName, 
-          
-          sons: validSons 
+        body: JSON.stringify({
+          requester_name: requesterName,
+
+          sons: validSons
         })
       })
-      
+
       const data = await response.json()
 
       if (!response.ok) {
         throw new Error(data.error || 'حدث خطأ أثناء إرسال الطلب')
       }
-      
+
       // إظهار رسالة النجاح ثم إغلاق النافذة
       setIsSuccess(true)
       setTimeout(() => {
@@ -100,7 +100,7 @@ export function AddSonsForm({  onClose }: AddSonsFormProps) {
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div>
@@ -114,7 +114,7 @@ export function AddSonsForm({  onClose }: AddSonsFormProps) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          
+
           {/* رسالة الخطأ */}
           {error && (
             <div className="flex items-center gap-2 p-4 text-red-600 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-100 dark:border-red-900">
@@ -138,29 +138,31 @@ export function AddSonsForm({  onClose }: AddSonsFormProps) {
             />
           </div>
 
-          
+
 
           {/* أسماء الأبناء */}
           <div className="space-y-3">
             <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               أسماء الأبناء المراد إضافتهم <span className="text-red-500">*</span>
             </label>
-            
+
             {sons.map((sonName, index) => (
-              <div key={index} className="flex items-center gap-2">
+              // Added w-full here to ensure the row fills space
+              <div key={index} className="flex items-center gap-2 w-full">
                 <input
                   type="text"
                   required
                   value={sonName}
                   onChange={(e) => handleSonNameChange(index, e.target.value)}
                   placeholder={`اسم الابن ${index + 1}`}
-                  className="flex-1 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  // ADDED: min-w-0 is the key fix for responsive flex inputs
+                  className="flex-1 min-w-0 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
                 {sons.length > 1 && (
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => handleRemoveSonField(index)}
-                    className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                    className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors shrink-0"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
