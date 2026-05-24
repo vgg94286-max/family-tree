@@ -25,7 +25,7 @@ export async function PUT(
       UPDATE family_members 
       SET 
         name = ${name},
-        father_id = ${father_id || null},
+        father_id = ${father_id || null}
        
       WHERE id = ${parseInt(id)}
       RETURNING *

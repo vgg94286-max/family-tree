@@ -37,7 +37,7 @@ export default function HomePage() {
         {/* Hero Section */}
         <div className="text-center mb-10">
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4 text-slate-900 dark:text-slate-100 tracking-tight">
-           شجرة آل جود الله
+           شجرة آل شايق
           </h1>
           <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto text-lg">
             تصفح شجرة العائلة الكاملة أو استخدم العرض التفاعلي للتنقل بين الأجيال بسهولة.
