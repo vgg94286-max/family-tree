@@ -15,30 +15,27 @@ function CompleteTreeNode({ member }: { member: FamilyMember }) {
   )
 
   return (
-    <div className="flex flex-col items-center relative">
-      {/* البطاقة - تصغير الحجم على الجوال */}
-      <div className="relative flex flex-col items-center px-3 py-2 md:px-5 md:py-3 rounded-lg md:rounded-xl border bg-white dark:bg-slate-900 shadow-sm min-w-[100px] md:min-w-[130px] z-10">
+    <div className="flex flex-col items-center relative shrink-0">
+      {/* إضافة shrink-0 و whitespace-nowrap */}
+      <div className="relative flex flex-col items-center px-3 py-2 md:px-5 md:py-3 rounded-lg md:rounded-xl border bg-white dark:bg-slate-900 shadow-sm min-w-[100px] md:min-w-[130px] z-10 shrink-0">
         <span className="font-bold text-xs md:text-sm text-slate-900 dark:text-slate-100 whitespace-nowrap">{member.name}</span>
       </div>
       
       {children && children.length > 0 && (
         <div className="relative mt-6 md:mt-8 flex justify-center w-full">
-          {/* خط عمودي لأسفل */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-6 md:h-8 -mt-6 md:-mt-8 bg-slate-300 dark:bg-slate-700" />
           
-          {/* خط أفقي */}
           {children.length > 1 && (
             <div 
                className="absolute top-0 left-0 right-0 h-px bg-slate-300 dark:bg-slate-700 mx-auto" 
-               style={{ width: `calc(100% - 100px)` }} // يتناسب مع min-w
+               style={{ width: `calc(100% - 100px)` }}
             />
           )}
           
-          {/* المسافات بين الأبناء - تصغير الغاب على الجوال */}
-          <div className="flex gap-2 md:gap-8 justify-center pt-6 md:pt-8">
+          {/* إجبار الأبناء على البقاء في صف واحد باستخدام flex-nowrap و w-max */}
+          <div className="flex gap-2 md:gap-8 justify-center pt-6 md:pt-8 flex-nowrap w-max mx-auto">
             {children.map((child) => (
-              <div key={child.id} className="relative flex flex-col items-center">
-                {/* خط للأبناء */}
+              <div key={child.id} className="relative flex flex-col items-center shrink-0">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-6 md:h-8 -mt-6 md:-mt-8 bg-slate-300 dark:bg-slate-700" />
                 <CompleteTreeNode member={child} />
               </div>
@@ -70,11 +67,11 @@ export function CompleteTree() {
   }
   
   return (
-    // إضافة touch-action لتسهيل التمرير باللمس
-    <div className="overflow-x-auto w-full touch-pan-x py-10 no-scrollbar">
-      <div className="min-w-max flex justify-center px-4 md:px-10">
-        {/* تقليل الفجوة الأساسية من 16 إلى 4 أو 8 على الجوال */}
-        <div className="flex gap-4 md:gap-16">
+    // استخدام overflow-auto لدعم التمرير في كل الاتجاهات
+    <div className="overflow-auto w-full touch-pan-x touch-pan-y py-10 no-scrollbar">
+      {/* w-max تضمن تمدد الحاوية خارج الشاشة عند الحاجة */}
+      <div className="w-max min-w-full flex justify-center px-4 md:px-10 mx-auto">
+        <div className="flex gap-4 md:gap-16 flex-nowrap">
           {rootMembers.map((member) => (
             <CompleteTreeNode key={member.id} member={member} />
           ))}
