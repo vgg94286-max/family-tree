@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { CompleteTree } from '@/components/complete-tree-adding'
 import { 
   Users, FileText, LogOut, Plus, Pencil, Trash2, Check, X, 
-  Loader2, ChevronLeft, Search, User
+  Loader2, ChevronLeft, Search, User,Network
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MemberSearch } from '@/components/member-search'
@@ -41,9 +42,8 @@ const fetcher = (url: string) => fetch(url).then(res => {
 
 export default function AdminDashboard() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'requests' | 'members'>('requests')
+  const [activeTab, setActiveTab] = useState<'requests' | 'members' | 'add_tree'>('requests')
   const [editingMember, setEditingMember] = useState<FamilyMember | null>(null)
-  const [isAddingMember, setIsAddingMember] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   
   // Check auth
@@ -166,17 +166,18 @@ export default function AdminDashboard() {
       
       <main className="container mx-auto px-4 py-8">
         {/* Tabs */}
-        <div className="flex gap-4 mb-8">
+        {/* Tabs */}
+        <div className="flex overflow-x-auto gap-2 md:gap-4 mb-8 pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible md:pb-0 scrollbar-hide">
           <button
             onClick={() => setActiveTab('requests')}
             className={cn(
-              "flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-colors",
+              "flex items-center gap-2 px-4 py-2.5 md:px-6 md:py-3 rounded-xl font-medium transition-colors whitespace-nowrap shrink-0 text-sm md:text-base",
               activeTab === 'requests'
                 ? "bg-primary text-primary-foreground"
-                : "bg-card text-muted-foreground hover:text-foreground"
+                : "bg-card text-muted-foreground hover:text-foreground shadow-sm border"
             )}
           >
-            <FileText className="w-5 h-5" />
+            <FileText className="w-4 h-4 md:w-5 md:h-5" />
             طلبات الإضافة
             {pendingCount > 0 && (
               <span className="bg-accent text-accent-foreground px-2 py-0.5 rounded-full text-xs font-bold">
@@ -184,18 +185,32 @@ export default function AdminDashboard() {
               </span>
             )}
           </button>
+          
           <button
             onClick={() => setActiveTab('members')}
             className={cn(
-              "flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-colors",
+              "flex items-center gap-2 px-4 py-2.5 md:px-6 md:py-3 rounded-xl font-medium transition-colors whitespace-nowrap shrink-0 text-sm md:text-base",
               activeTab === 'members'
                 ? "bg-primary text-primary-foreground"
-                : "bg-card text-muted-foreground hover:text-foreground"
+                : "bg-card text-muted-foreground hover:text-foreground shadow-sm border"
             )}
           >
-            <Users className="w-5 h-5" />
+            <Users className="w-4 h-4 md:w-5 md:h-5" />
             أعضاء العائلة
             <span className="text-xs opacity-70">({members?.length || 0})</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('add_tree')}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2.5 md:px-6 md:py-3 rounded-xl font-medium transition-colors whitespace-nowrap shrink-0 text-sm md:text-base",
+              activeTab === 'add_tree' 
+                ? "bg-primary text-primary-foreground" 
+                : "bg-card text-muted-foreground hover:text-foreground shadow-sm border"
+            )}
+          >
+            <Network className="w-4 h-4 md:w-5 md:h-5" />
+            إضافة عضو (عبر الشجرة)
           </button>
         </div>
         
@@ -216,23 +231,22 @@ export default function AdminDashboard() {
             onSearchChange={setSearchQuery}
             onEdit={setEditingMember}
             onDelete={handleDeleteMember}
-            onAdd={() => setIsAddingMember(true)}
+            
           />
+        )}
+        {activeTab === 'add_tree' && (
+          <AddMemberTreeTab />
         )}
       </main>
       
       {/* Edit/Add Modal */}
-      {(editingMember || isAddingMember) && (
+      {editingMember && (
         <MemberFormModal
           member={editingMember}
-          onClose={() => {
-            setEditingMember(null)
-            setIsAddingMember(false)
-          }}
+          onClose={() => setEditingMember(null)}
           onSave={() => {
             mutate('/api/admin/members')
             setEditingMember(null)
-            setIsAddingMember(false)
           }}
         />
       )}
@@ -376,7 +390,7 @@ function MembersTab({
   onSearchChange,
   onEdit,
   onDelete,
-  onAdd
+  
 }: {
   members: FamilyMember[]
   isLoading: boolean
@@ -384,7 +398,7 @@ function MembersTab({
   onSearchChange: (query: string) => void
   onEdit: (member: FamilyMember) => void
   onDelete: (id: number) => void
-  onAdd: () => void
+  
 }) {
   if (isLoading) {
     return (
@@ -407,10 +421,7 @@ function MembersTab({
             className="pr-10"
           />
         </div>
-        <Button onClick={onAdd}>
-          <Plus className="w-5 h-5 ml-2" />
-          إضافة عضو جديد
-        </Button>
+        
       </div>
       
       {/* Table */}
@@ -480,7 +491,7 @@ function MemberFormModal({
     father_id: member?.father_id || null,
     
   })
-  const [selectedFather, setSelectedFather] = useState<{ id: number; name: string } | null>(
+  const [selectedFather, setSelectedFather] = useState<{ id: number; name: string; } | null>(
     member?.father_id && member?.father_name 
       ? { id: member.father_id, name: member.father_name } 
       : null
@@ -585,6 +596,171 @@ function MemberFormModal({
               ) : (
                 member ? 'حفظ التغييرات' : 'إضافة'
               )}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+// تبويب إضافة الأعضاء عبر الشجرة التفاعلية
+function AddMemberTreeTab() {
+  const [selectedFather, setSelectedFather] = useState<FamilyMember | null>(null)
+  const [isRootModalOpen, setIsRootModalOpen] = useState(false)
+
+  return (
+    <div className="bg-card border rounded-xl p-4 md:p-8 min-h-[600px] relative">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold">إضافة أعضاء للشجرة</h2>
+          <p className="text-muted-foreground text-sm">انقر على أي عضو في الشجرة لإضافة أبناء له.</p>
+        </div>
+        <Button onClick={() => setIsRootModalOpen(true)} variant="outline">
+          <Plus className="w-4 h-4 ml-2" /> إضافة جد (بدون أب)
+        </Button>
+      </div>
+
+      <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg border overflow-hidden">
+        <CompleteTree 
+          onSelectNode={(member) => setSelectedFather(member)} 
+          selectedNodeId={selectedFather?.id || null} 
+        />
+      </div>
+
+      {selectedFather && (
+        <AddMultipleSonsModal
+          father={selectedFather}
+          onClose={() => setSelectedFather(null)}
+          onSave={() => {
+            // تحديث بيانات الشجرة للعضو المحدد لتظهر الفروع الجديدة فوراً
+            // 1. Update the regular members table
+      mutate('/api/admin/members')
+      
+      // 2. Force re-fetch of the entire tree to update children_counts
+      mutate(
+        (key) => typeof key === 'string' && key.startsWith('/api/family'),
+        undefined,
+        { revalidate: true }
+      )
+            setSelectedFather(null)
+          }}
+        />
+      )}
+
+      {isRootModalOpen && (
+        <AddMultipleSonsModal
+          father={null}
+          onClose={() => setIsRootModalOpen(false)}
+          onSave={() => {
+           // 1. Update the regular members table
+      mutate('/api/admin/members')
+      
+      // 2. Force re-fetch of the entire tree
+      mutate(
+        (key) => typeof key === 'string' && key.startsWith('/api/family'),
+        undefined,
+        { revalidate: true }
+      )
+            setIsRootModalOpen(false)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// نافذة منبثقة تسمح بإضافة ابن أو أكثر في نفس الوقت
+function AddMultipleSonsModal({ father, onClose, onSave }: { father: FamilyMember | null, onClose: () => void, onSave: () => void }) {
+  const [names, setNames] = useState<string[]>([''])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleAddInput = () => setNames([...names, ''])
+  const handleRemoveInput = (index: number) => setNames(names.filter((_, i) => i !== index))
+  const handleNameChange = (index: number, value: string) => {
+    const newNames = [...names]
+    newNames[index] = value
+    setNames(newNames)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setIsSubmitting(true)
+
+    // تصفية الحقول الفارغة
+    const validNames = names.filter(n => n.trim() !== '')
+    
+    if (validNames.length === 0) {
+      setError('الرجاء إدخال اسم واحد على الأقل')
+      setIsSubmitting(false)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/admin/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          names: validNames, // إرسال كمصفوفة
+          father_id: father ? father.id : null
+        })
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error)
+      }
+      onSave()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'حدث خطأ أثناء الإضافة')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-card rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-card z-10">
+          <h2 className="text-xl font-bold">
+            {father ? `إضافة أبناء لـ: ${father.name}` : 'إضافة جد رئيسي'}
+          </h2>
+          <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">{error}</div>}
+          
+          <div className="space-y-4">
+            <Label>أسماء الأبناء المضافين:</Label>
+            {names.map((name, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <Input
+                  value={name}
+                  onChange={(e) => handleNameChange(index, e.target.value)}
+                  placeholder={`الاسم ${index + 1}`}
+                  autoFocus={index === names.length - 1}
+                />
+                {names.length > 1 && (
+                  <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveInput(index)} className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <Button type="button" variant="outline" className="w-full border-dashed" onClick={handleAddInput}>
+            <Plus className="w-4 h-4 ml-2" /> إضافة ابن آخر
+          </Button>
+
+          <div className="flex gap-3 pt-6 border-t mt-6">
+            <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>إلغاء</Button>
+            <Button type="submit" className="flex-1" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ وإضافة'}
             </Button>
           </div>
         </form>

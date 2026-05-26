@@ -6,38 +6,27 @@ export async function GET(request: Request) {
   const fatherId = searchParams.get('father_id')
   
   try {
-    let members: FamilyMember[]
+    let membersWithChildCount;
     
     if (fatherId === null || fatherId === 'null') {
-      // Get root members (those with no father)
-      members = await sql`
-        SELECT * FROM family_members 
-        WHERE father_id IS NULL 
-        
-      ` as FamilyMember[]
+      // 1 Query: Get root members AND count their children
+      membersWithChildCount = await sql`
+        SELECT * from public.get_root_family_members()
+      `
     } else {
-      // Get children of a specific member
-      members = await sql`
-        SELECT * FROM family_members 
-        WHERE father_id = ${parseInt(fatherId)} 
-        
-      ` as FamilyMember[]
+      // 1 Query: Get specific children AND count their children
+      membersWithChildCount = await sql`
+        SELECT * from public.get_family_children (${parseInt(fatherId)})
+      `
     }
     
-    // Get children count for each member
-    const membersWithChildCount = await Promise.all(
-      members.map(async (member) => {
-        const childCount = await sql`
-          SELECT COUNT(*) as count FROM family_members WHERE father_id = ${member.id}
-        ` as { count: string }[]
-        return {
-          ...member,
-          children_count: parseInt(childCount[0]?.count || '0')
-        }
-      })
-    )
+    // Parse the count to a number before returning
+    const normalized = membersWithChildCount.map(m => ({
+      ...m,
+      children_count: parseInt(m.children_count || '0')
+    }))
     
-    return NextResponse.json(membersWithChildCount)
+    return NextResponse.json(normalized)
   } catch (error) {
     console.error('Database error:', error)
     return NextResponse.json({ error: 'فشل في جلب البيانات' }, { status: 500 })

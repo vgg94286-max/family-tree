@@ -10,12 +10,7 @@ export async function GET() {
 
   try {
     const requests = await sql`
-      SELECT r.*, m.name as father_name
-      FROM guest_requests r
-      LEFT JOIN family_members m ON r.father_id = m.id
-      ORDER BY 
-        CASE r.status WHEN 'pending' THEN 0 ELSE 1 END,
-        r.created_at DESC
+      SELECT * FROM public.get_guest_requests();
     `
 
     const normalized = requests.map((r: any) => ({

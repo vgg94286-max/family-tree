@@ -10,9 +10,9 @@ const ibmPlexArabic = IBM_Plex_Sans_Arabic({
 })
 
 export const metadata: Metadata = {
-  title: 'شجرة قبيلة الجودي',
-  description: 'شجرة العائلة التفاعلية لقبيلة الجودي - تصفح الأنساب وأضف أفراد العائلة',
-  generator: 'v0.app',
+  title: ' شجرة آل شايق',
+  description: 'شجرة العائلة التفاعلية لآل شايق - تصفح الأنساب وأضف أفراد العائلة',
+  
   icons: {
     icon: [
       {

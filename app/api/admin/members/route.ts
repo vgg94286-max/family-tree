@@ -10,10 +10,7 @@ export async function GET() {
   
   try {
     const members = await sql`
-      SELECT m.*, p.name as father_name
-      FROM family_members m
-      LEFT JOIN family_members p ON m.father_id = p.id
-      ORDER BY m.created_at DESC
+      SELECT * from public.get_family_members()
     ` as (FamilyMember & { father_name: string | null })[]
     
     return NextResponse.json(members)
@@ -23,6 +20,8 @@ export async function GET() {
   }
 }
 
+
+
 export async function POST(request: Request) {
   const admin = await getAdminFromCookie()
   if (!admin) {
@@ -31,21 +30,29 @@ export async function POST(request: Request) {
   
   try {
     const body = await request.json()
-    const { name, father_id} = body
+    // نقبل مصفوفة أسماء (names) أو اسماً واحداً (name) كدعم رجعي (Backward Compatibility)
+    const { names, name, father_id } = body
     
-    if (!name) {
+    const membersToAdd: string[] = names && Array.isArray(names) ? names : (name ? [name] : [])
+    const validNames = membersToAdd.filter(n => n && n.trim() !== '')
+
+    if (validNames.length === 0) {
       return NextResponse.json({ error: 'الاسم مطلوب' }, { status: 400 })
     }
     
-    const result = await sql`
+    // THE FIX: 1 Single Database Trip!
+    // UNNEST transforms the JavaScript array into a temporary SQL table of rows,
+    // allowing us to insert all of them at once with the same father_id.
+    const results = await sql`
       INSERT INTO family_members (name, father_id)
-      VALUES (${name}, ${father_id})
+      SELECT name_val, ${father_id}
+      FROM UNNEST(${validNames}::text[]) AS name_val
       RETURNING *
     ` as FamilyMember[]
     
-    return NextResponse.json(result[0])
+    return NextResponse.json(results)
   } catch (error) {
     console.error('Database error:', error)
-    return NextResponse.json({ error: 'فشل في إضافة العضو' }, { status: 500 })
+    return NextResponse.json({ error: 'فشل في إضافة الأعضاء' }, { status: 500 })
   }
 }

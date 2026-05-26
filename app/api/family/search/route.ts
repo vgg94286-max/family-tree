@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       FROM family_members 
       WHERE TRANSLATE(name, 'أإآة', 'اااه') ILIKE TRANSLATE(${normalizedQuery}, 'أإآة', 'اااه')
       ORDER BY name ASC
-      LIMIT 20
+      LIMIT 10
     `
     
     return NextResponse.json(members)
