@@ -14,6 +14,7 @@ export interface FamilyMember {
   id: number
   name: string
   father_id: number | null
+  state?: string | null 
   
   children_count?: number
 }

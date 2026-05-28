@@ -29,26 +29,24 @@ export async function POST(request: Request) {
   }
   
   try {
-    const body = await request.json()
-    // نقبل مصفوفة أسماء (names) أو اسماً واحداً (name) كدعم رجعي (Backward Compatibility)
-    const { names, name, father_id } = body
-    
-    const membersToAdd: string[] = names && Array.isArray(names) ? names : (name ? [name] : [])
-    const validNames = membersToAdd.filter(n => n && n.trim() !== '')
+   // Replace the old body extraction with this:
+const { members, father_id } = await request.json()
+const validItems = (members || []).filter((m: any) => m.name && m.name.trim() !== '')
 
-    if (validNames.length === 0) {
-      return NextResponse.json({ error: 'الاسم مطلوب' }, { status: 400 })
-    }
-    
-    // THE FIX: 1 Single Database Trip!
-    // UNNEST transforms the JavaScript array into a temporary SQL table of rows,
-    // allowing us to insert all of them at once with the same father_id.
-    const results = await sql`
-      INSERT INTO family_members (name, father_id)
-      SELECT name_val, ${father_id}
-      FROM UNNEST(${validNames}::text[]) AS name_val
-      RETURNING *
-    ` as FamilyMember[]
+if (validItems.length === 0) {
+  return NextResponse.json({ error: 'الاسم مطلوب' }, { status: 400 })
+}
+
+const names = validItems.map((m: any) => m.name.trim())
+const states = validItems.map((m: any) => m.state || 'على قيد الحياة')
+
+// Replace the old INSERT query with this:
+const results = await sql`
+  INSERT INTO family_members (name, father_id, state)
+  SELECT name_val, ${father_id}, state_val
+  FROM UNNEST(${names}::text[], ${states}::text[]) AS t(name_val, state_val)
+  RETURNING *
+` as FamilyMember[]
     
     return NextResponse.json(results)
   } catch (error) {

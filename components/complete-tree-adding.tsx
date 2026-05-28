@@ -10,9 +10,23 @@ interface FamilyMember {
   name: string
   father_id: number | null
   father_name: string | null
+  state?: string | null
   children_count?: number
 }
+export const getStateStyles = (state?: string | null) => {
+  switch (state) {
+    case 'متوفى': return 'bg-gray-200 text-slate-800 border-gray-300 dark:bg-gray-700 dark:text-white dark:border-gray-500';
+    case 'متوفى وليس له عقب': return 'bg-black text-white border-black dark:bg-black dark:border-gray-800';
+    case 'توفي صغيرا': return 'bg-[#F5F5DC] text-slate-800 border-[#E5E5CC] dark:bg-[#7A7A5C] dark:text-white dark:border-[#6A6A4C]';
+    case 'على قيد الحياة':
+    default: return 'bg-white text-slate-900 border-border dark:bg-slate-900 dark:text-slate-100';
+  }
+}
 
+export const getStateText = (state?: string | null) => {
+  if (!state || state === 'على قيد الحياة') return 'على قيد الحياة';
+  return `${state} (رحمه الله)`;
+}
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 interface TreeProps {
@@ -33,22 +47,31 @@ function CompleteTreeNode({ member, onSelectNode, selectedNodeId }: { member: Fa
   return (
     <div className="flex flex-col items-center relative shrink-0">
       {/* أضفنا تفاعل النقر وتغيير التصميم بناءً على حالة التحديد */}
-      <button
-        onClick={() => onSelectNode && onSelectNode(member)}
-        className={cn(
-          "relative flex flex-col items-center px-3 py-2 md:px-5 md:py-3 rounded-lg md:rounded-xl border shadow-sm min-w-[100px] md:min-w-[130px] z-10 shrink-0 transition-all cursor-pointer hover:scale-105 active:scale-95",
-          isSelected 
-            ? "bg-primary text-primary-foreground border-primary ring-4 ring-primary/20" 
-            : "bg-white dark:bg-slate-900 border-border hover:border-primary/50"
-        )}
-      >
-        <span className={cn(
-          "font-bold text-xs md:text-sm whitespace-nowrap",
-          isSelected ? "text-primary-foreground" : "text-slate-900 dark:text-slate-100"
-        )}>
-          {member.name}
-        </span>
-      </button>
+     <button
+  onClick={() => onSelectNode && onSelectNode(member)}
+  className={cn(
+    "relative flex flex-col items-center px-3 py-2 md:px-5 md:py-3 rounded-lg md:rounded-xl border shadow-sm min-w-[100px] md:min-w-[130px] z-10 shrink-0 transition-all cursor-pointer hover:scale-105 active:scale-95",
+    getStateStyles(member.state), // <-- Applied color styles here
+    isSelected && "ring-4 ring-primary/40 border-primary"
+  )}
+>
+  <span className={cn(
+    "font-bold text-xs md:text-sm whitespace-nowrap",
+    member.state === 'متوفى وليس له عقب' ? "text-white" : "" // Ensure text is visible on black
+  )}>
+    {member.name}
+  </span>
+  
+  {/* Added state text below name */}
+  {member.state && member.state !== 'على قيد الحياة' && (
+    <span className={cn(
+      "text-[9px] md:text-[11px] mt-1 opacity-90 font-medium",
+      member.state === 'متوفى وليس له عقب' ? "text-gray-300" : "text-muted-foreground"
+    )}>
+      {getStateText(member.state)}
+    </span>
+  )}
+</button>
 
       {children && children.length > 0 && (
         <div className="relative mt-6 md:mt-8 flex justify-center w-max mx-auto">

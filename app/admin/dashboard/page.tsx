@@ -17,13 +17,21 @@ import {
 import { cn } from '@/lib/utils'
 import { MemberSearch } from '@/components/member-search'
 
-interface FamilyMember {
+export interface FamilyMember {
   id: number
   name: string
   father_id: number | null
   father_name: string | null
-  
+  state?: string | null // <-- Add this
+  children_count?: number
 }
+
+export const MEMBER_STATES = [
+  "على قيد الحياة",
+  "توفي صغيرا",
+  "متوفى وليس له عقب",
+  "متوفى"
+];
 
 interface GuestRequest {
   id: number
@@ -453,12 +461,7 @@ function MembersTab({
                   
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => onEdit(member)}
-                        className="p-2 hover:bg-secondary rounded-lg transition-colors"
-                      >
-                        <Pencil className="w-4 h-4 text-primary" />
-                      </button>
+                      
                       <button
                         onClick={() => onDelete(member.id)}
                         className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
@@ -628,8 +631,8 @@ function AddMemberTreeTab() {
       </div>
 
       {selectedFather && (
-        <AddMultipleSonsModal
-          father={selectedFather}
+        <TreeActionModal
+          member={selectedFather}
           onClose={() => setSelectedFather(null)}
           onSave={() => {
             // تحديث بيانات الشجرة للعضو المحدد لتظهر الفروع الجديدة فوراً
@@ -648,8 +651,8 @@ function AddMemberTreeTab() {
       )}
 
       {isRootModalOpen && (
-        <AddMultipleSonsModal
-          father={null}
+        <TreeActionModal
+          member={null}
           onClose={() => setIsRootModalOpen(false)}
           onSave={() => {
            // 1. Update the regular members table
@@ -669,101 +672,121 @@ function AddMemberTreeTab() {
   )
 }
 
-// نافذة منبثقة تسمح بإضافة ابن أو أكثر في نفس الوقت
-function AddMultipleSonsModal({ father, onClose, onSave }: { father: FamilyMember | null, onClose: () => void, onSave: () => void }) {
-  const [names, setNames] = useState<string[]>([''])
+function TreeActionModal({ member, onClose, onSave }: { member: FamilyMember | null, onClose: () => void, onSave: () => void }) {
+  const [activeTab, setActiveTab] = useState<'add' | 'edit'>('add')
+  const [sons, setSons] = useState<{name: string, state: string}[]>([{name: '', state: 'على قيد الحياة'}])
+  
+  // تحديث حالة التعديل لتشمل الأب
+  const [editData, setEditData] = useState({ 
+    name: member?.name || '', 
+    state: member?.state || 'على قيد الحياة',
+    father_id: member?.father_id || null,
+    father_name: member?.father_name || ''
+  })
+  
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleAddInput = () => setNames([...names, ''])
-  const handleRemoveInput = (index: number) => setNames(names.filter((_, i) => i !== index))
-  const handleNameChange = (index: number, value: string) => {
-    const newNames = [...names]
-    newNames[index] = value
-    setNames(newNames)
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setIsSubmitting(true)
-
-    // تصفية الحقول الفارغة
-    const validNames = names.filter(n => n.trim() !== '')
+  const handleAddSubmit = async (e: React.FormEvent) => {
+    e.preventDefault(); setError(null); setIsSubmitting(true);
+    const validSons = sons.filter(s => s.name.trim() !== '')
+    if (validSons.length === 0) { setError('أدخل اسم واحد على الأقل'); setIsSubmitting(false); return; }
     
-    if (validNames.length === 0) {
-      setError('الرجاء إدخال اسم واحد على الأقل')
-      setIsSubmitting(false)
-      return
-    }
-
     try {
       const response = await fetch('/api/admin/members', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          names: validNames, // إرسال كمصفوفة
-          father_id: father ? father.id : null
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ members: validSons, father_id: member?.id || null })
+      })
+      if (!response.ok) throw new Error((await response.json()).error)
+      onSave()
+    } catch (err: any) { setError(err.message) } finally { setIsSubmitting(false) }
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault(); setError(null); setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/admin/members/${member!.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        // إرسال father_id الجديد
+        body: JSON.stringify({ 
+          name: editData.name, 
+          state: editData.state, 
+          father_id: editData.father_id 
         })
       })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error)
-      }
+      if (!response.ok) throw new Error((await response.json()).error)
       onSave()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'حدث خطأ أثناء الإضافة')
-    } finally {
-      setIsSubmitting(false)
-    }
+    } catch (err: any) { setError(err.message) } finally { setIsSubmitting(false) }
   }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-card rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-card z-10">
-          <h2 className="text-xl font-bold">
-            {father ? `إضافة أبناء لـ: ${father.name}` : 'إضافة جد رئيسي'}
-          </h2>
-          <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg">
-            <X className="w-5 h-5" />
-          </button>
+      {/* تم إضافة pb-32 لضمان عدم قص قائمة البحث المنسدلة للأب */}
+      <div className="bg-card rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col pb-32">
+        <div className="flex items-center justify-between p-4 border-b">
+          {member ? (
+            <div className="flex gap-4">
+              <button onClick={() => setActiveTab('add')} className={cn("font-bold pb-2 border-b-2", activeTab === 'add' ? "border-primary text-primary" : "border-transparent text-muted-foreground")}>إضافة أبناء</button>
+              <button onClick={() => setActiveTab('edit')} className={cn("font-bold pb-2 border-b-2", activeTab === 'edit' ? "border-primary text-primary" : "border-transparent text-muted-foreground")}>تعديل البيانات</button>
+            </div>
+          ) : <h2 className="text-xl font-bold">إضافة جد رئيسي</h2>}
+          <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg mb-2"><X className="w-5 h-5" /></button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">{error}</div>}
+        <div className="p-6 overflow-y-auto">
+          {error && <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm mb-4">{error}</div>}
           
-          <div className="space-y-4">
-            <Label>أسماء الأبناء المضافين:</Label>
-            {names.map((name, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <Input
-                  value={name}
-                  onChange={(e) => handleNameChange(index, e.target.value)}
-                  placeholder={`الاسم ${index + 1}`}
-                  autoFocus={index === names.length - 1}
-                />
-                {names.length > 1 && (
-                  <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveInput(index)} className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+          {activeTab === 'add' ? (
+            <form onSubmit={handleAddSubmit} className="space-y-4">
+              <Label>{member ? `أسماء أبناء (${member.name}):` : 'الفروع الرئيسية:'}</Label>
+              {sons.map((son, index) => (
+                <div key={index} className="flex gap-2 items-center bg-secondary/20 p-2 rounded-lg">
+                  <Input value={son.name} onChange={(e) => { const n = [...sons]; n[index].name = e.target.value; setSons(n); }} placeholder={`الاسم ${index + 1}`} className="flex-1" />
+                  <select value={son.state} onChange={(e) => { const n = [...sons]; n[index].state = e.target.value; setSons(n); }} className="w-[140px] h-10 px-2 rounded-md border text-sm bg-background">
+                    {MEMBER_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  {sons.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => setSons(sons.filter((_, i) => i !== index))} className="text-destructive shrink-0"><Trash2 className="w-4 h-4" /></Button>}
+                </div>
+              ))}
+              <Button type="button" variant="outline" className="w-full border-dashed" onClick={() => setSons([...sons, {name: '', state: 'على قيد الحياة'}])}><Plus className="w-4 h-4 ml-2" /> إضافة حقل آخر</Button>
+              <Button type="submit" className="w-full mt-4" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ وإضافة'}</Button>
+            </form>
+          ) : (
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div><Label>الاسم</Label><Input value={editData.name} onChange={(e) => setEditData({...editData, name: e.target.value})} required /></div>
+              <div>
+                <Label>الحالة</Label>
+                <select value={editData.state} onChange={(e) => setEditData({...editData, state: e.target.value})} className="w-full h-10 px-3 rounded-md border bg-background">
+                  {MEMBER_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              
+              {/* حقل تعديل الأب */}
+              <div className="space-y-2">
+                <Label>الأب (يمكن تغييره)</Label>
+                {editData.father_id ? (
+                  <div className="flex items-center gap-3 p-3 bg-secondary rounded-lg border">
+                    <span className="flex-1 text-sm font-medium">الأب: {editData.father_name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setEditData({...editData, father_id: null, father_name: ''})}
+                      className="p-1 hover:bg-background rounded text-muted-foreground"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <MemberSearch
+                    onSelect={(m) => setEditData({...editData, father_id: m.id, father_name: m.name})}
+                    placeholder="ابحث عن الأب الجديد..."
+                  />
                 )}
               </div>
-            ))}
-          </div>
 
-          <Button type="button" variant="outline" className="w-full border-dashed" onClick={handleAddInput}>
-            <Plus className="w-4 h-4 ml-2" /> إضافة ابن آخر
-          </Button>
-
-          <div className="flex gap-3 pt-6 border-t mt-6">
-            <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>إلغاء</Button>
-            <Button type="submit" className="flex-1" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ وإضافة'}
-            </Button>
-          </div>
-        </form>
+              <Button type="submit" className="w-full mt-4" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ التعديلات'}</Button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -14,22 +14,26 @@ export async function PUT(
   const { id } = await params
   
   try {
-    const body = await request.json()
-    const { name, father_id } = body
+    
+   const { name, father_id, state } = await request.json()
     
     if (!name) {
       return NextResponse.json({ error: 'الاسم مطلوب' }, { status: 400 })
     }
     
-    const result = await sql`
-      UPDATE family_members 
-      SET 
-        name = ${name},
-        father_id = ${father_id || null}
-       
-      WHERE id = ${parseInt(id)}
-      RETURNING *
-    ` as FamilyMember[]
+    
+
+
+// Update the SQL query:
+const result = await sql`
+  UPDATE family_members 
+  SET 
+    name = ${name},
+    father_id = ${father_id || null},
+    state = ${state || 'على قيد الحياة'}
+  WHERE id = ${parseInt(id)}
+  RETURNING *
+` as FamilyMember[]
     
     if (result.length === 0) {
       return NextResponse.json({ error: 'العضو غير موجود' }, { status: 404 })

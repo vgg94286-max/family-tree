@@ -6,6 +6,21 @@ import { ChevronUp } from 'lucide-react'
 import { FamilyMember } from '@/app/page'
 import { cn } from '@/lib/utils'
 
+export const getStateStyles = (state?: string | null) => {
+  switch (state) {
+    case 'متوفى': return 'bg-gray-200 text-slate-800 border-gray-300 dark:bg-gray-700 dark:text-white dark:border-gray-500';
+    case 'متوفى وليس له عقب': return 'bg-black text-white border-black dark:bg-black dark:border-gray-800';
+    case 'توفي صغيرا': return 'bg-[#F5F5DC] text-slate-800 border-[#E5E5CC] dark:bg-[#7A7A5C] dark:text-white dark:border-[#6A6A4C]';
+    case 'على قيد الحياة':
+    default: return 'bg-white text-slate-900 border-border dark:bg-slate-900 dark:text-slate-100';
+  }
+}
+
+export const getStateText = (state?: string | null) => {
+  if (!state || state === 'على قيد الحياة') return 'على قيد الحياة';
+  return `${state} (رحمه الله)`;
+}
+
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 export function InteractiveTree() {
@@ -55,15 +70,15 @@ export function InteractiveTree() {
           return (
             <div key={ancestor.id} className="flex flex-col items-center relative group">
               <div 
-                onClick={() => !isCurrentFocus && handleAncestorClick(index)}
-                className={cn(
-                  // إضافة shrink-0 لمنع الصندوق من الانكماش
-                  "relative flex flex-col items-center justify-center px-3 py-3 md:px-6 md:py-4 rounded-xl border-2 transition-all min-w-[120px] md:min-w-[160px] shrink-0",
-                  isCurrentFocus 
-                    ? "border-primary bg-primary text-primary-foreground shadow-lg scale-105" 
-                    : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 cursor-pointer hover:border-primary hover:shadow-md"
-                )}
-              >
+  onClick={() => !isCurrentFocus && handleAncestorClick(index)}
+  className={cn(
+    "relative flex flex-col items-center justify-center px-3 py-3 md:px-6 md:py-4 rounded-xl border-2 transition-all min-w-[120px] md:min-w-[160px] shrink-0",
+    getStateStyles(ancestor.state), // <-- Apply styles
+    isCurrentFocus 
+      ? "border-primary ring-4 ring-primary/30 shadow-lg scale-105" // Removed 'bg-primary' so it doesn't overwrite state color
+      : "cursor-pointer hover:border-primary hover:shadow-md"
+  )}
+>
                 {!isCurrentFocus && (
                   <div className="absolute -top-3 bg-slate-800 text-white text-[10px] px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-all translate-y-1 group-hover:-translate-y-1 flex items-center gap-1 shadow-sm">
                     <ChevronUp className="w-3 h-3" />
@@ -71,6 +86,11 @@ export function InteractiveTree() {
                   </div>
                 )}
                 <span className="font-bold text-sm md:text-lg whitespace-nowrap">{ancestor.name}</span>
+                {ancestor.state && ancestor.state !== 'على قيد الحياة' && (
+    <span className={cn("text-[9px] md:text-xs mt-1 opacity-90 font-medium", ancestor.state === 'متوفى وليس له عقب' ? "text-gray-300" : "text-muted-foreground")}>
+      {getStateText(ancestor.state)}
+    </span>
+  )}
               </div>
               
               <div className="w-px h-6 md:h-10 bg-slate-300 dark:bg-slate-700" />
@@ -95,11 +115,19 @@ export function InteractiveTree() {
                 <div key={child.id} className="relative flex flex-col items-center group shrink-0">
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-6 md:h-10 -mt-6 md:-mt-10 bg-slate-300 dark:bg-slate-700 group-hover:bg-primary transition-colors" />
                   
-                  <div 
-                    onClick={() => handleChildClick(child)}
-                    className="flex flex-col items-center justify-center px-3 py-3 md:px-6 md:py-4 rounded-xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 cursor-pointer transition-all hover:border-primary hover:shadow-md hover:-translate-y-1 min-w-[120px] md:min-w-[160px]"
-                  >
-                    <span className="font-bold text-xs md:text-base text-slate-900 dark:text-slate-100 whitespace-nowrap">{child.name}</span>
+                 <div 
+  onClick={() => handleChildClick(child)}
+  className={cn(
+    "flex flex-col items-center justify-center px-3 py-3 md:px-6 md:py-4 rounded-xl border-2 cursor-pointer transition-all hover:border-primary hover:shadow-md hover:-translate-y-1 min-w-[120px] md:min-w-[160px]",
+    getStateStyles(child.state) // <-- Apply styles
+  )}
+>
+                    <span className="font-bold text-xs md:text-base dark:text-slate-100 whitespace-nowrap">{child.name}</span>
+                    {child.state && child.state !== 'على قيد الحياة' && (
+    <span className={cn("text-[9px] md:text-[11px] mt-1 opacity-90 font-medium", child.state === 'متوفى وليس له عقب' ? "text-gray-300" : "text-muted-foreground")}>
+      {getStateText(child.state)}
+    </span>
+  )}
                     {child.children_count !== undefined && child.children_count > 0 && (
                        <span className="text-[10px] md:text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full mt-1 md:mt-2">
                          {child.children_count} أبناء

@@ -5,7 +5,20 @@ import { FamilyMember } from '@/app/page'
 import { cn } from '@/lib/utils'
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
+export const getStateStyles = (state?: string | null) => {
+  switch (state) {
+    case 'متوفى': return 'bg-gray-200 text-slate-800 border-gray-300 dark:bg-gray-700 dark:text-white dark:border-gray-500';
+    case 'متوفى وليس له عقب': return 'bg-black text-white border-black dark:bg-black dark:border-gray-800';
+    case 'توفي صغيرا': return 'bg-[#F5F5DC] text-slate-800 border-[#E5E5CC] dark:bg-[#7A7A5C] dark:text-white dark:border-[#6A6A4C]';
+    case 'على قيد الحياة':
+    default: return 'bg-white text-slate-900 border-border dark:bg-slate-900 dark:text-slate-100';
+  }
+}
 
+export const getStateText = (state?: string | null) => {
+  if (!state || state === 'على قيد الحياة') return 'على قيد الحياة';
+  return `${state} (رحمه الله)`;
+}
 function CompleteTreeNode({ member }: { member: FamilyMember }) {
   const { data: children } = useSWR<FamilyMember[]>(
     member.children_count && member.children_count > 0
@@ -16,10 +29,15 @@ function CompleteTreeNode({ member }: { member: FamilyMember }) {
 
   return (
     <div className="flex flex-col items-center relative shrink-0">
-      <div className="relative flex flex-col items-center px-3 py-2 md:px-5 md:py-3 rounded-lg md:rounded-xl border bg-white dark:bg-slate-900 shadow-sm min-w-[100px] md:min-w-[130px] z-10 shrink-0">
-        <span className="font-bold text-xs md:text-sm text-slate-900 dark:text-slate-100 whitespace-nowrap">
+      <div className={cn("relative flex flex-col items-center px-3 py-2 md:px-5 md:py-3 rounded-lg md:rounded-xl border bg-white dark:bg-slate-900 shadow-sm min-w-[100px] md:min-w-[130px] z-10 shrink-0", getStateStyles(member.state))}>
+        <span className="font-bold text-xs md:text-sm dark:text-slate-100 whitespace-nowrap">
           {member.name}
         </span>
+        {member.state && member.state !== 'على قيد الحياة' && (
+  <span className="text-[10px] md:text-xs mt-1 opacity-90 font-medium">
+    {getStateText(member.state)}
+  </span>
+)}
       </div>
 
       {children && children.length > 0 && (
